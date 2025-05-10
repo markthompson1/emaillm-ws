@@ -14,10 +14,8 @@ jobs:
 
       - name: Install tooling
         run: |
-          pip install markdownlint-cli ruff black pytest
+          pip install ruff black pytest
 
-      - name: Lint markdown
-        run: markdownlint docs/**/*.md || true
 
       - name: Lint & format Python
         run: |
