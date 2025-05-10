@@ -1,0 +1,12 @@
+name: Feature request
+description: Suggest an idea
+labels: enhancement
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What problem are you solving?
+  - type: textarea
+    id: how
+    attributes:
+      label: Proposed solution
