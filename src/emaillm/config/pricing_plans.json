@@ -1,0 +1,21 @@
+{
+  "free": {
+    "price_cents": 0,
+    "quota_week": 10,
+    "quota_month": 40,
+    "features": ["basic_llm", "rate_limit"],
+    "stripe_price_id": "price_FREE"
+  },
+  "starter": {
+    "price_cents": 1000,
+    "quota_month": 100,
+    "features": ["prompt_enhancer", "usage_dashboard"],
+    "stripe_price_id": "price_STARTER"
+  },
+  "premium": {
+    "price_cents": 2000,
+    "quota_month": 500,
+    "features": ["prompt_enhancer", "model_picker", "priority_queue"],
+    "stripe_price_id": "price_PREMIUM"
+  }
+}
