@@ -1,0 +1,43 @@
+import os
+from fastapi import APIRouter, Request, HTTPException
+from starlette.responses import JSONResponse
+from google.cloud import firestore
+import hmac
+import hashlib
+import base64
+import json
+
+router = APIRouter()
+
+SENDGRID_SIGNING_KEY = os.getenv("SENDGRID_SIGNING_KEY")
+
+def verify_sendgrid_signature(request: Request, body: bytes) -> bool:
+    signature = request.headers.get("X-Twilio-Email-Event-Webhook-Signature")
+    timestamp = request.headers.get("X-Twilio-Email-Event-Webhook-Timestamp")
+    if not (signature and timestamp and SENDGRID_SIGNING_KEY):
+        return False
+    try:
+        signed_payload = timestamp.encode() + body
+        key = base64.b64decode(SENDGRID_SIGNING_KEY)
+        computed_sig = base64.b64encode(hmac.new(key, signed_payload, hashlib.sha256).digest()).decode()
+        return hmac.compare_digest(signature, computed_sig)
+    except Exception:
+        return False
+
+@router.post("/webhook/inbound")
+async def inbound_email(request: Request):
+    body = await request.body()
+    if not verify_sendgrid_signature(request, body):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    payload = await request.json()
+    sender = payload.get("from")
+    to = payload.get("to")
+    subject = payload.get("subject")
+    email_body = payload.get("body")
+    # Store original payload
+    db = firestore.Client()
+    db.collection("emails_in").add(payload)
+    # Call downstream processor
+    from emaillm.routes.process_email import process_email  # assumed to exist
+    process_email(sender, to, subject, email_body)
+    return JSONResponse({"status": "accepted"}, status_code=200)
