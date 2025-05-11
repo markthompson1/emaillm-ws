@@ -1,1 +1,3 @@
 google-cloud-firestore
+fastapi==0.111.*
+uvicorn[standard]
