@@ -1,6 +1,7 @@
 from emaillm.config.pricing_loader import get_plan
 from emaillm.exceptions import OverQuotaError
 from google.cloud import firestore
+from emaillm.nlp.prompt_enhancer import enhance_prompt
 
 # Assume sendgrid_client is available in the global scope or imported elsewhere
 # from emaillm.email.sendgrid_client import send_template
@@ -28,5 +29,9 @@ def enforce_quota(email, subject, body, proceed):
             raise OverQuotaError(f"User {email} is over quota for plan {user_data['plan']}")
         # Update usage
         transaction.update(user_ref, {"weekly_usage": weekly, "monthly_usage": monthly})
+        # If plan enables prompt_enhancer, enhance prompt before LLM step
+        if hasattr(plan, "features") and plan.features and "prompt_enhancer" in plan.features:
+            enhanced = enhance_prompt(user_data.get("topic", ""), subject, body)
+            return proceed(enhanced)
         return proceed()
     return db.transaction()(txn_logic)

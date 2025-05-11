@@ -1,0 +1,5 @@
+{
+  "sports": "Summarise the latest news, match results, and upcoming fixtures for {topic}.",
+  "finance": "Give the latest share price, day change %, and headline news for {topic}.",
+  "weather": "Provide today’s forecast (temp, precipitation, wind) for {topic}."
+}
