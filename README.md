@@ -17,3 +17,10 @@ src/            Windsurf project code
    GitHub *Settings → Secrets → Actions*.
 4. Push a feature branch and open a pull‑request – CI will lint the docs and
    run placeholder tests.
+
+## Local setup
+
+1. Copy `.env.example` to `.env` and fill in your secrets.
+2. Place your Google service account JSON at the path you set in `GOOGLE_APPLICATION_CREDENTIALS`.
+3. Run `pip install -r requirements.txt` to install dependencies.
+4. Run tests with `pytest -q` (pytest will automatically load variables from `.env`).
