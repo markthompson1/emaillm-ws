@@ -9,7 +9,7 @@ import json
 
 router = APIRouter()
 
-SENDGRID_SIGNING_KEY = os.getenv("SENDGRID_SIGNING_KEY")
+SENDGRID_SIGNING_KEY = os.getenv("SENDGRID_SIGNING_KEY", "")
 
 def verify_sendgrid_signature(request: Request, body: bytes) -> bool:
     signature = request.headers.get("X-Twilio-Email-Event-Webhook-Signature")
@@ -27,8 +27,10 @@ def verify_sendgrid_signature(request: Request, body: bytes) -> bool:
 @router.post("/webhook/inbound")
 async def inbound_email(request: Request):
     body = await request.body()
-    if not verify_sendgrid_signature(request, body):
-        raise HTTPException(status_code=401, detail="Invalid signature")
+    # MVP: skip signature check when no key provided
+    if SENDGRID_SIGNING_KEY:
+        if not verify_sendgrid_signature(request, body):
+            raise HTTPException(status_code=401, detail="Invalid signature")
     payload = await request.json()
     sender = payload.get("from")
     to = payload.get("to")

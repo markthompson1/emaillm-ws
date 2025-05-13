@@ -18,7 +18,32 @@ src/            Windsurf project code
 4. Push a feature branch and open a pull‑request – CI will lint the docs and
    run placeholder tests.
 
+## Deployment
+
+To deploy changes to your VPS:
+
+1. Commit & push your changes to GitHub (main branch).
+2. SSH into your VPS and run:
+   ```sh
+   ./deploy.sh
+   ```
+   This will pull the latest code, install dependencies, and restart the service.
+3. On any other local clone, run `git pull` to sync.
+
+To automate deployment, consider using GitHub Actions to SSH and run `deploy.sh` on push.
+
 ## Local setup
+
+### Webhook unsigned test
+If you want to test without changing code, send empty signature headers:
+
+```sh
+curl -X POST <your-endpoint> \
+  -H "X-Twilio-Email-Event-Webhook-Signature:" \
+  -H "X-Twilio-Email-Event-Webhook-Timestamp:" \
+  -d '{}'
+```
+
 
 1. Copy `.env.example` to `.env` and fill in your secrets.
 2. Place your Google service account JSON at the path you set in `GOOGLE_APPLICATION_CREDENTIALS`.
