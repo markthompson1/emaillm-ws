@@ -5,6 +5,9 @@
 [functions]
   directory = "netlify/functions"
 
+[[plugins]]
+  package = "@netlify/plugins-python"
+
 [[redirects]]
   from = "/*"
   to   = "/.netlify/functions/api"
