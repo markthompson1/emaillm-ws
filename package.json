@@ -2,7 +2,4 @@
   "name": "emaillm-ws",
   "version": "1.0.0",
   "private": true,
-  "devDependencies": {
-    "@netlify/plugin-python": "^1.2.0"
-  }
 }
