@@ -11,10 +11,10 @@ app.include_router(router)
 def client():
     return TestClient(app)
 
-@patch("emaillm.routes.inbound_email.verify_sendgrid_signature", return_value=True)
+@patch("emaillm.routes.process_email.process_email")
 @patch("emaillm.routes.inbound_email.firestore.Client")
-@patch("emaillm.routes.inbound_email.process_email")
-def test_inbound_email_success(mock_process_email, mock_firestore, mock_verify, client):
+@patch("emaillm.routes.inbound_email.verify_sendgrid_signature", return_value=True)
+def test_inbound_email_success(mock_verify, mock_firestore, mock_process_email, client):
     payload = {
         "from": "sender@example.com",
         "to": "to@example.com",
