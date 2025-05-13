@@ -6,7 +6,7 @@
   directory = "netlify/functions"
 
 [[plugins]]
-  package = "@netlify/plugins-python"
+  package = "@netlify/plugin-python"
 
 [[redirects]]
   from = "/*"
