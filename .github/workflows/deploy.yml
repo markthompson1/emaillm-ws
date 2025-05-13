@@ -1,0 +1,26 @@
+name: Deploy to VPS
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_DEPLOY_KEY }}
+
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.VPS_HOST }} 'bash -s' <<'EOSSH'
+            set -e
+            cd /srv/emaillm-ws
+            git pull origin main
+            ./.venv/bin/pip install -q -r requirements.txt
+            sudo systemctl restart emaillm
+          EOSSH
