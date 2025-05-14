@@ -7,7 +7,9 @@ env/
 
 # Secrets & config
 .env
-!.env.example
+.env.example
+secrets/
+*.json
 
 # OS files
 .DS_Store
