@@ -1,3 +1,6 @@
+# allows running without heavy wheels
+from tests._stubs import *   # noqa: F401  pylint: disable=unused-wildcard-import
+
 import pytest
 from unittest.mock import patch, MagicMock
 from emaillm.middleware.quota_enforcement import enforce_quota, OverQuotaError

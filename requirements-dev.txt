@@ -1,0 +1,10 @@
+# dev extras – install *only* on laptops / CI that needs to run pytest
+-r requirements.txt       # ← the regular prod deps
+
+# testing & tooling
+pytest
+pytest-dotenv             # so pytest.ini's [pytest] env_files = .env line is honoured
+pytest-mock               # optional but nice
+# you *may* comment these out if you truly want stub-only tests
+google-cloud-firestore==2.20.2
+sendgrid>=6.11

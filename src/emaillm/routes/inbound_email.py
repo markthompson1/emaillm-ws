@@ -1,7 +1,11 @@
 import os
 from fastapi import APIRouter, Request, HTTPException
 from starlette.responses import JSONResponse
-from google.cloud import firestore
+try:
+    from google.cloud import firestore
+except ImportError:               # local dev without Firestore wheel
+    from tests._stubs import *   # noqa: F401  pylint: disable=unused-wildcard-import
+    from google.cloud import firestore
 import hmac
 import hashlib
 import base64
