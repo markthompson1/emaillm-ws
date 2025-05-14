@@ -17,10 +17,6 @@ jobs:
 
       - name: Deploy via SSH
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.VPS_HOST }} 'bash -s' <<'EOSSH'
-            set -e
-            cd /srv/emaillm-ws
-            git pull origin main
-            ./.venv/bin/pip install -q -r requirements.txt
-            sudo systemctl restart emaillm
-          EOSSH
+          ssh -o StrictHostKeyChecking=no ubuntu@${VPS_HOST} 'set -e; cd /srv/emaillm-ws && sudo -u www-data git fetch --all && sudo -u www-data git reset --hard origin/main && sudo systemctl restart emaillm'
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
