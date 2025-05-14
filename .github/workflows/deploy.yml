@@ -19,7 +19,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${VPS_HOST} '
             set -e
-            git config --global --add safe.directory /srv/emaillm-ws
+            sudo -u www-data git config --global --add safe.directory /srv/emaillm-ws
             cd /srv/emaillm-ws &&
             sudo -u www-data git fetch --all &&
             sudo -u www-data git reset --hard origin/main &&
