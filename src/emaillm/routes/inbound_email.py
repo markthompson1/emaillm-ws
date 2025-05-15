@@ -14,6 +14,7 @@ import json
 router = APIRouter()
 
 SENDGRID_SIGNING_KEY = os.getenv("SENDGRID_SIGNING_KEY", "")
+ENABLE_DB = os.getenv("ENABLE_FIRESTORE", "false").lower() == "true"
 
 def verify_sendgrid_signature(request: Request, body: bytes) -> bool:
     signature = request.headers.get("X-Twilio-Email-Event-Webhook-Signature")
@@ -40,10 +41,15 @@ async def inbound_email(request: Request):
     to = payload.get("to")
     subject = payload.get("subject")
     email_body = payload.get("body")
-    # Store original payload
-    db = firestore.Client()
-    db.collection("emails_in").add(payload)
+    # Store original payload only if ENABLE_DB is True
+    if ENABLE_DB:
+        try:
+            db = firestore.Client()
+            db.collection("emails_in").add(payload)
+        except Exception as exc:
+            print(f"DB error: {exc}")  # non-fatal log
     # Call downstream processor
     from emaillm.routes.process_email import process_email  # assumed to exist
     process_email(sender, to, subject, email_body)
     return JSONResponse({"status": "accepted"}, status_code=200)
+
