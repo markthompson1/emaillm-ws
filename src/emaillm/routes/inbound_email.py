@@ -36,19 +36,16 @@ async def inbound_email(request: Request):
     if SENDGRID_SIGNING_KEY:
         if not verify_sendgrid_signature(request, body):
             raise HTTPException(status_code=401, detail="Invalid signature")
-    payload = await request.json()
     try:
         # SendGrid Inbound Parse posts multipart/form-data
         form = await request.form()
-        payload: dict
         if form:
             payload = {k: v for k, v in form.items()}
         else:
             # Allow local curl '{}' tests that send JSON
             payload = await request.json()
     except Exception as exc:
-        # Malformed request; respond 422 so Nginx & SendGrid see it
-        raise HTTPException(status_code=422, detail=str(exc))
+        raise HTTPException(status_code=422, detail=f"Bad request: {exc}")
     sender = payload.get("from")
     to = payload.get("to")
     subject = payload.get("subject")
