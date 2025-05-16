@@ -57,8 +57,27 @@ async def inbound_email(request: Request):
             db.collection("emails_in").add(payload)
         except Exception as exc:
             print(f"DB error: {exc}")  # non-fatal log
-    # Call downstream processor
-    from emaillm.routes.process_email import process_email  # assumed to exist
-    process_email(sender, to, subject, email_body)
-    return JSONResponse({"status": "accepted"}, status_code=200)
+    log = getLogger("emaillm")
+    try:
+        log.info(">> Webhook: payload keys=%s", list(payload.keys()))
 
+        # 1️⃣  Choose the model
+        model = route_email(payload.get("subject", ""), payload.get("text", ""))
+        log.info(">> Routed to: %s", model)
+
+        # 2️⃣  Generate reply
+        reply_text = call_llm(model, payload)
+        log.info(">> LLM reply length=%d chars", len(reply_text))
+
+        # 3️⃣  Send email via SendGrid
+        send_email(
+            to_addr=payload["from"],
+            subject=f"Re: {payload.get('subject','')}",
+            body_text=reply_text,
+        )
+        log.info(">> Reply sent to %s", payload["from"])
+
+    except Exception as exc:
+        log.exception("!! processing failed: %s", exc)
+        raise HTTPException(status_code=500, detail="processing error")
+    return JSONResponse({"status": "accepted"}, status_code=200)
