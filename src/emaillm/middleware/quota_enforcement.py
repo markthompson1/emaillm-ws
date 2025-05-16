@@ -1,6 +1,9 @@
 from emaillm.config.pricing_loader import get_plan
 from emaillm.exceptions import OverQuotaError
-from google.cloud import firestore
+try:
+    from google.cloud import firestore
+except ImportError:               # local dev without Firestore wheel
+    firestore = None
 from emaillm.nlp.prompt_enhancer import enhance_prompt
 
 # Assume sendgrid_client is available in the global scope or imported elsewhere

@@ -1,9 +1,18 @@
 import os
 import time
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+try:
+    from sendgrid import SendGridAPIClient
+except ImportError:               # local dev without SendGrid wheel
+    SendGridAPIClient = None
+try:
+    from sendgrid.helpers.mail import Mail
+except ImportError:               # local dev without SendGrid wheel
+    Mail = None
 from functools import lru_cache
-from google.cloud import firestore
+try:
+    from google.cloud import firestore
+except ImportError:               # local dev without Firestore wheel
+    firestore = None
 import os
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_SIGNING_KEY")

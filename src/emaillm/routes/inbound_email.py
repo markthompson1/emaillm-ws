@@ -6,10 +6,12 @@ try:
 except ImportError:               # local dev without Firestore wheel
     from tests._stubs import *   # noqa: F401  pylint: disable=unused-wildcard-import
     from google.cloud import firestore
-import hmac
-import hashlib
-import base64
-import json
+import hmac, hashlib, base64, json, logging
+
+# project helpers
+from emaillm.core.routing import route_email
+from emaillm.core.llm import call_llm
+from emaillm.core.emailer import send_email
 
 router = APIRouter()
 
@@ -46,10 +48,10 @@ async def inbound_email(request: Request):
             payload = await request.json()
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Bad request: {exc}")
-    sender = payload.get("from")
-    to = payload.get("to")
+    sender  = payload.get("from")
+    to_addr = payload.get("to")
     subject = payload.get("subject")
-    email_body = payload.get("body")
+    plain   = payload.get("text")   # SendGrid plaintext field
     # Store original payload only if ENABLE_DB is True
     if ENABLE_DB:
         try:
@@ -71,8 +73,8 @@ async def inbound_email(request: Request):
 
         # 3️⃣  Send email via SendGrid
         send_email(
-            to_addr=payload["from"],
-            subject=f"Re: {payload.get('subject','')}",
+            to_addr=sender,
+            subject=f"Re: {subject or ''}",
             body_text=reply_text,
         )
         log.info(">> Reply sent to %s", payload["from"])
