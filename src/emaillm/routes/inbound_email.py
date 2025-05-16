@@ -6,7 +6,11 @@ try:
 except ImportError:               # local dev without Firestore wheel
     from tests._stubs import *   # noqa: F401  pylint: disable=unused-wildcard-import
     from google.cloud import firestore
-import hmac, hashlib, base64, json, logging
+import hmac, hashlib, base64, json, logging, email.utils
+
+# turn INFO logs on everywhere once per process
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s %(message)s")
 
 # project helpers
 from emaillm.core.routing import route_email
@@ -48,7 +52,8 @@ async def inbound_email(request: Request):
             payload = await request.json()
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Bad request: {exc}")
-    sender  = payload.get("from")
+    sender_raw  = payload.get("from", "")
+    sender_email = email.utils.parseaddr(sender_raw)[1]   # strip display name
     to_addr = payload.get("to")
     subject = payload.get("subject")
     plain   = payload.get("text")   # SendGrid plaintext field
@@ -73,11 +78,11 @@ async def inbound_email(request: Request):
 
         # 3️⃣  Send email via SendGrid
         send_email(
-            to_addr=sender,
+            to_addr=sender_email,
             subject=f"Re: {subject or ''}",
             body_text=reply_text,
         )
-        log.info(">> Reply sent to %s", payload["from"])
+        log.info(">> Reply sent to %s", sender_email)
 
     except Exception as exc:
         log.exception("!! processing failed: %s", exc)
