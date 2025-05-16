@@ -57,7 +57,7 @@ async def inbound_email(request: Request):
             db.collection("emails_in").add(payload)
         except Exception as exc:
             print(f"DB error: {exc}")  # non-fatal log
-    log = getLogger("emaillm")
+    log = logging.getLogger("emaillm")
     try:
         log.info(">> Webhook: payload keys=%s", list(payload.keys()))
 
