@@ -1,8 +1,11 @@
 from emaillm.core.providers import GPT41
 
 PROVIDERS = {
-    "GPT-4-class": GPT41(),    # default premium
-    "GPT-4.1": GPT41(),
+    # Premium family
+    "GPT-4-class": GPT41(),
+    "GPT-4.1":      GPT41(),
+    # Legacy string still emitted by router
+    "GPT-4 Turbo":  GPT41(),
 }
 
 def call_llm(model: str, payload: dict) -> str:
