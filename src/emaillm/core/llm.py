@@ -1,16 +1,14 @@
 from emaillm.core.providers import GPT41
 
+# Map routing strings to provider instances
 PROVIDERS = {
-    # Premium family
     "GPT-4-class": GPT41(),
-    "GPT-4.1":      GPT41(),
-    # Legacy string still emitted by router
-    "GPT-4 Turbo":  GPT41(),
+    "GPT-4.1":     GPT41(),
+    "GPT-4 Turbo": GPT41(),   # legacy router string
 }
 
 def call_llm(model: str, payload: dict) -> str:
-    """Stub LLM call—returns a canned reply noting the chosen model."""
-    return (f"Hi,\n\n"
-            f"This is a placeholder response generated via the {model} route.\n"
-            f"In production, this will call the real LLM API.\n\n"
-            f"– EMAILLM MVP")
+    """Return the provider’s real GPT-4.1 reply text."""
+    prompt = payload.get("text") or payload.get("subject", "")
+    provider = PROVIDERS.get(model) or PROVIDERS["GPT-4.1"]
+    return provider.chat(prompt)
