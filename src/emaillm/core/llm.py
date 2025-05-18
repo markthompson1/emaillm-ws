@@ -1,3 +1,10 @@
+from emaillm.core.providers import GPT41
+
+PROVIDERS = {
+    "GPT-4-class": GPT41(),    # default premium
+    "GPT-4.1": GPT41(),
+}
+
 def call_llm(model: str, payload: dict) -> str:
     """Stub LLM call—returns a canned reply noting the chosen model."""
     return (f"Hi,\n\n"
