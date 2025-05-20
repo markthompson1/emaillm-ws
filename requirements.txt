@@ -53,3 +53,4 @@ watchfiles==1.0.5
 websockets==15.0.1
 sendgrid>=6.11
 mangum~=0.17
+redis>=5,<6
