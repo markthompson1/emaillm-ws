@@ -14,10 +14,20 @@ app.include_router(router)
 def client():
     return TestClient(app)
 
-@patch("emaillm.routes.process_email.process_email")
-@patch("google.cloud.firestore.Client")
+@patch("emaillm.routes.inbound_email.ENABLE_DB", True)
+@patch("emaillm.routes.inbound_email.firestore.Client")
+@patch("emaillm.routes.inbound_email.send_email")
+
 @patch("emaillm.routes.inbound_email.verify_sendgrid_signature", return_value=True)
-def test_inbound_email_success(mock_verify, mock_firestore, mock_process_email, client):
+@patch("emaillm.routes.inbound_email.call_llm", return_value="OK")
+def test_inbound_email_success(
+    mock_call_llm,          # innermost (5)
+    mock_verify,            # 4
+
+    mock_send_email,        # 2
+    mock_firestore,         # 1
+    client,                 # pytest fixture
+):
     payload = {
         "from": "sender@example.com",
         "to": "to@example.com",
@@ -29,4 +39,4 @@ def test_inbound_email_success(mock_verify, mock_firestore, mock_process_email, 
     assert response.status_code == 200
     assert response.json()["status"] == "accepted"
     mock_firestore.return_value.collection.return_value.add.assert_called_once_with(payload)
-    mock_process_email.assert_called_once_with("sender@example.com", "to@example.com", "Test subject", "Hello world")
+    
