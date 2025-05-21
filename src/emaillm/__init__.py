@@ -107,5 +107,14 @@ async def add_process_time_header(request: Request, call_next: Callable):
         REQUEST_IN_PROGRESS.labels(method=method, endpoint=path).dec()
 
 # Add Prometheus instrumentation after all routes and middleware are registered
-from prometheus_fastapi_instrumentator import Instrumentator
-Instrumentator().instrument(app).expose(app, include_in_schema=False)
+from prometheus_fastapi_instrumentator import Instrumentator, metrics  # noqa: E402
+
+Instrumentator()\
+    .instrument(app)\
+    .expose(app, endpoint="/metrics", include_in_schema=False)
+
+# Log registered routes for debugging
+import logging
+logging.getLogger(__name__).info(
+    "Registered routes: %s", [r.path for r in app.router.routes]
+)
