@@ -47,10 +47,6 @@ app.add_middleware(QuotaMiddleware)
 # Include routers
 app.include_router(inbound_email_router)
 
-# Add Prometheus instrumentation after all routers are included
-from prometheus_fastapi_instrumentator import Instrumentator
-Instrumentator().instrument(app).expose(app, include_in_schema=False)
-
 # Add metrics endpoint
 @app.get("/metrics")
 async def metrics():
@@ -109,3 +105,7 @@ async def add_process_time_header(request: Request, call_next: Callable):
             status_code=status_code
         ).observe(duration)
         REQUEST_IN_PROGRESS.labels(method=method, endpoint=path).dec()
+
+# Add Prometheus instrumentation after all routes and middleware are registered
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app, include_in_schema=False)
