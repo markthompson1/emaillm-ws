@@ -40,6 +40,10 @@ logger = structlog.get_logger()
 # Create FastAPI app
 app = FastAPI(title="EMAILLM", version="0.1.0")
 
+# Add Prometheus instrumentation
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
 # Add middleware
 from emaillm.middleware.quota_enforcement import QuotaMiddleware
 app.add_middleware(QuotaMiddleware)
