@@ -78,3 +78,6 @@ def get_or_set(prompt: str, compute_fn: Callable[[str], T], cache_name: str = "d
         )
     
     return reply, False
+def get_redis() -> "redis.Redis":
+    from emaillm.core.cache import _redis
+    return _redis
