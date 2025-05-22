@@ -14,3 +14,9 @@ secrets/
 # OS files
 .DS_Store
 Thumbs.dbsecrets/
+
+# Local development files
+.envrc
+.python-version
+fix_env.sh
+repair_env.sh
