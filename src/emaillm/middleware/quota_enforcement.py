@@ -53,18 +53,14 @@ class QuotaMiddleware(BaseHTTPMiddleware):
             if request.url.path == "/webhook/inbound":
                 form = await request.form()
                 from_field = form.get("from", "")
-                try:
-                    # Parse the email using email.utils.parseaddr for robust handling
-                    _, sender_email = parseaddr(from_field)
-                    if not sender_email or "@" not in sender_email:
-                        logger.warning("Invalid or missing 'from' field in request", from_field=from_field)
-                        raise HTTPException(status_code=422, detail="Malformed sender email address")
+                # Parse email using the same method as in inbound_email.py
+                sender_email = parseaddr(from_field)[1]
+                if not sender_email or "@" not in sender_email:
+                    logger.warning("Invalid or missing 'from' field in request", from_field=from_field)
+                    # Use a default user ID for rate limiting purposes instead of failing
+                    user_id = "unknown@example.com"
+                else:
                     user_id = sender_email.lower()
-                except Exception as e:
-                    if not isinstance(e, HTTPException):
-                        logger.warning("Error parsing 'from' field", error=str(e), from_field=from_field)
-                        raise HTTPException(status_code=422, detail="Invalid sender format") from e
-                    raise  # Re-raise HTTPException
                 
                 try:
                     # Get user's plan (in a real app, this would come from a user database)
