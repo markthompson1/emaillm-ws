@@ -1,0 +1,17 @@
+[Unit]
+Description=EmailLM FastAPI Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/emaillm-ws
+ExecStart=/srv/emaillm-ws/.venv/bin/uvicorn \
+  --app-dir /srv/emaillm-ws/src \
+  emaillm:app \
+  --host 0.0.0.0 --port 8000 --workers 2
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

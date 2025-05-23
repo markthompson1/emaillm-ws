@@ -38,20 +38,44 @@ def verify_sendgrid_signature(request: Request, body: bytes) -> bool:
 @router.post("/webhook/inbound")
 async def inbound_email(request: Request):
     body = await request.body()
+    logger = logging.getLogger("emaillm")
+    
     # MVP: skip signature check when no key provided
     if SENDGRID_SIGNING_KEY:
         if not verify_sendgrid_signature(request, body):
             raise HTTPException(status_code=401, detail="Invalid signature")
+    
     try:
-        # SendGrid Inbound Parse posts multipart/form-data
-        form = await request.form()
-        if form:
-            payload = {k: v for k, v in form.items()}
+        content_type = request.headers.get("content-type", "")
+        
+        # Handle JSON
+        if "application/json" in content_type:
+            try:
+                payload = await request.json()
+                logger.debug(f"JSON data received: {list(payload.keys())}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Error parsing JSON: {str(e)}")
+                raise HTTPException(status_code=422, detail="Invalid JSON data")
+        # Handle multipart/form-data
+        elif "multipart/form-data" in content_type:
+            form = await request.form()
+            wanted = {"from", "to", "subject", "text", "html"}
+            payload = {
+                k: (v if isinstance(v, str) else v.decode())
+                for k, v in form.multi_items()
+                if k in wanted
+            }
+            if not payload:
+                raise HTTPException(status_code=422, 
+                                  detail="No recognised e-mail fields in form-data")
+            logger.debug(f"Form data received: {list(payload.keys())}")
         else:
-            # Allow local curl '{}' tests that send JSON
-            payload = await request.json()
+            logger.error(f"Unsupported content type: {content_type}")
+            raise HTTPException(status_code=415, detail="Unsupported Media Type")
+            
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Bad request: {exc}")
+        logger.exception(f"Unexpected error processing request: {str(exc)}")
+        raise HTTPException(status_code=422, detail=f"Error processing request: {str(exc)}")
     sender_raw  = payload.get("from", "")
     sender_email = email.utils.parseaddr(sender_raw)[1]   # strip display name
     to_addr = payload.get("to")
