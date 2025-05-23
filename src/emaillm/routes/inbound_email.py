@@ -48,23 +48,27 @@ async def inbound_email(request: Request):
     try:
         content_type = request.headers.get("content-type", "")
         
-        # Handle multipart/form-data
-        if "multipart/form-data" in content_type:
-            try:
-                form = await request.form()
-                payload = {k: v for k, v in form.items()}
-                logger.debug(f"Form data received: {list(payload.keys())}")
-            except Exception as e:
-                logger.error(f"Error parsing form data: {str(e)}")
-                raise HTTPException(status_code=422, detail=f"Invalid form data: {str(e)}")
         # Handle JSON
-        elif "application/json" in content_type:
+        if "application/json" in content_type:
             try:
                 payload = await request.json()
                 logger.debug(f"JSON data received: {list(payload.keys())}")
             except json.JSONDecodeError as e:
                 logger.error(f"Error parsing JSON: {str(e)}")
                 raise HTTPException(status_code=422, detail="Invalid JSON data")
+        # Handle multipart/form-data
+        elif "multipart/form-data" in content_type:
+            form = await request.form()
+            wanted = {"from", "to", "subject", "text", "html"}
+            payload = {
+                k: (v if isinstance(v, str) else v.decode())
+                for k, v in form.multi_items()
+                if k in wanted
+            }
+            if not payload:
+                raise HTTPException(status_code=422, 
+                                  detail="No recognised e-mail fields in form-data")
+            logger.debug(f"Form data received: {list(payload.keys())}")
         else:
             logger.error(f"Unsupported content type: {content_type}")
             raise HTTPException(status_code=415, detail="Unsupported Media Type")
