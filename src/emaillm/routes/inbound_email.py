@@ -40,6 +40,10 @@ async def inbound_email(request: Request):
     body = await request.body()
     logger = logging.getLogger("emaillm")
     
+    # Log raw request info for debugging
+    logger.warning(">> Raw request headers: %s", dict(request.headers))
+    logger.warning(">> Raw request body (first 500 bytes): %s", body[:500])
+    
     # MVP: skip signature check when no key provided
     if SENDGRID_SIGNING_KEY:
         if not verify_sendgrid_signature(request, body):
@@ -58,25 +62,53 @@ async def inbound_email(request: Request):
                 raise HTTPException(status_code=422, detail="Invalid JSON data")
         # Handle multipart/form-data
         elif "multipart/form-data" in content_type:
-            from starlette.datastructures import UploadFile
-            form = await request.form()
-            logger.warning(">> inbound form keys=%s", list(form.keys()))
+            from starlette.datastructures import UploadFile, FormData
             
-            wanted = {"from", "to", "subject", "text", "html"}
-            payload = {}
-            for k, v in form.multi_items():
-                kl = k.lower()
-                if kl not in wanted:
-                    continue
-                if isinstance(v, UploadFile):
-                    continue
-                if isinstance(v, bytes):
-                    v = v.decode(errors="replace")
-                payload[kl] = v
-            if not payload:
-                logger.warning("Unrecognised form keys=%s", list(form.keys()))
-                raise HTTPException(status_code=422,
-                                  detail="No recognised e-mail fields in form-data")
+            # Log boundary and content type
+            content_type_header = request.headers.get('content-type', '')
+            logger.warning(">> Content-Type: %s", content_type_header)
+            
+            try:
+                # Try to parse the form data
+                form = await request.form()
+                logger.warning(">> Form data parsed successfully")
+                
+                # Log all form parts
+                for part in form.multi_items():
+                    k, v = part
+                    logger.warning(">> Form part - key: %s, type: %s, value: %s", 
+                                 k, type(v).__name__, 
+                                 str(v)[:100] + '...' if isinstance(v, (str, bytes)) else v)
+                
+                # Process form data
+                wanted = {"from", "to", "subject", "text", "html"}
+                payload = {}
+                for k, v in form.multi_items():
+                    kl = k.lower()
+                    if kl not in wanted:
+                        continue
+                    if isinstance(v, UploadFile):
+                        # Handle file uploads if needed
+                        continue
+                    if isinstance(v, bytes):
+                        v = v.decode(errors="replace")
+                    elif not isinstance(v, str):
+                        v = str(v)
+                    payload[kl] = v
+                
+                if not payload:
+                    logger.warning("No recognized email fields found in form data")
+                    raise HTTPException(
+                        status_code=422,
+                        detail="No recognised e-mail fields in form-data"
+                    )
+                    
+            except Exception as form_error:
+                logger.error("Error parsing form data: %s", str(form_error), exc_info=True)
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Error processing form data: {str(form_error)}"
+                )
             logger.debug(f"Form data received: {list(payload.keys())}")
         else:
             logger.error(f"Unsupported content type: {content_type}")
