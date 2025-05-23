@@ -37,25 +37,32 @@ def verify_sendgrid_signature(request: Request, body: bytes) -> bool:
 
 @router.post("/webhook/inbound")
 async def inbound_email(request: Request):
-    body = await request.body()
     logger = logging.getLogger("emaillm")
     
-    # Log raw request info for debugging
-    logger.warning(">> Raw request headers: %s", dict(request.headers))
-    logger.warning(">> Raw request body (first 500 bytes): %s", body[:500])
+    # Log raw request headers for debugging
+    headers = dict(request.headers)
+    logger.warning(">> Raw request headers: %s", headers)
     
-    # MVP: skip signature check when no key provided
+    # Get content type for request processing
+    content_type = headers.get("content-type", "")
+    
+    # Only read body for signature verification if needed
+    body = b''
     if SENDGRID_SIGNING_KEY:
+        body = await request.body()
+        logger.warning(">> Raw request body (first 500 bytes): %s", body[:500])
         if not verify_sendgrid_signature(request, body):
             raise HTTPException(status_code=401, detail="Invalid signature")
     
     try:
-        content_type = request.headers.get("content-type", "")
-        
         # Handle JSON
         if "application/json" in content_type:
             try:
-                payload = await request.json()
+                # If we already read the body, parse it directly
+                if body:
+                    payload = json.loads(body.decode())
+                else:
+                    payload = await request.json()
                 logger.debug(f"JSON data received: {list(payload.keys())}")
             except json.JSONDecodeError as e:
                 logger.error(f"Error parsing JSON: {str(e)}")
@@ -65,8 +72,7 @@ async def inbound_email(request: Request):
             from starlette.datastructures import UploadFile, FormData
             
             # Log boundary and content type
-            content_type_header = request.headers.get('content-type', '')
-            logger.warning(">> Content-Type: %s", content_type_header)
+            logger.warning(">> Content-Type: %s", content_type)
             
             try:
                 # Try to parse the form data
