@@ -58,15 +58,24 @@ async def inbound_email(request: Request):
                 raise HTTPException(status_code=422, detail="Invalid JSON data")
         # Handle multipart/form-data
         elif "multipart/form-data" in content_type:
+            from starlette.datastructures import UploadFile
             form = await request.form()
+            logger.warning(">> inbound form keys=%s", list(form.keys()))
+            
             wanted = {"from", "to", "subject", "text", "html"}
-            payload = {
-                k: (v if isinstance(v, str) else v.decode())
-                for k, v in form.multi_items()
-                if k in wanted
-            }
+            payload = {}
+            for k, v in form.multi_items():
+                kl = k.lower()
+                if kl not in wanted:
+                    continue
+                if isinstance(v, UploadFile):
+                    continue
+                if isinstance(v, bytes):
+                    v = v.decode(errors="replace")
+                payload[kl] = v
             if not payload:
-                raise HTTPException(status_code=422, 
+                logger.warning("Unrecognised form keys=%s", list(form.keys()))
+                raise HTTPException(status_code=422,
                                   detail="No recognised e-mail fields in form-data")
             logger.debug(f"Form data received: {list(payload.keys())}")
         else:
