@@ -51,38 +51,62 @@ class QuotaMiddleware(BaseHTTPMiddleware):
             # For inbound email webhook
             if request.url.path == "/webhook/inbound":
                 form = await request.form()
-                sender_email = form.get("from", "").split()[-1].strip("<>")
-                user_id = sender_email  # Use email as user ID for now
+                from_field = form.get("from", "")
+                try:
+                    # Handle case where from field is empty or malformed
+                    if not from_field or "@" not in from_field:
+                        logger.warning("Invalid or missing 'from' field in request", from_field=from_field)
+                        # Use a default user ID for rate limiting purposes
+                        user_id = "unknown@example.com"
+                    else:
+                        # Extract email from formats like "Name <email@example.com>" or just "email@example.com"
+                        sender_email = from_field.split()[-1].strip("<>")
+                        user_id = sender_email
+                except Exception as e:
+                    logger.warning("Error parsing 'from' field", error=str(e), from_field=from_field)
+                    user_id = "unknown@example.com"  # Fallback user ID
                 
-                # Get user's plan (in a real app, this would come from a user database)
-                plan = get_plan(user_id)
-                
-                # Check and consume quota
-                has_quota = check_and_consume(user_id, plan=plan)
-                
-                if not has_quota:
-                    # Log quota exceeded event
-                    logger.warning(
-                        "Quota exceeded",
+                try:
+                    # Get user's plan (in a real app, this would come from a user database)
+                    plan = get_plan(user_id)
+                    
+                    # Check and consume quota
+                    has_quota = check_and_consume(user_id, plan=plan)
+                    
+                    if not has_quota:
+                        # Log quota exceeded event
+                        logger.warning(
+                            "Quota exceeded",
+                            user_id=user_id,
+                            plan=plan,
+                            path=request.url.path,
+                            method=request.method
+                        )
+                        
+                        # Record metric
+                        QUOTA_EXCEEDED.labels(
+                            user_id=user_id or "unknown",
+                            quota_type=plan or "unknown"
+                        ).inc()
+                        
+                        raise HTTPException(
+                            status_code=429,
+                            detail={
+                                "error": "quota_exceeded",
+                                "message": "Quota exhausted – upgrade your plan or wait for the quota to reset"
+                            }
+                        )
+                except Exception as e:
+                    # Log the error but don't block the request
+                    logger.error(
+                        "Error in quota check",
+                        error=str(e),
                         user_id=user_id,
-                        plan=plan,
                         path=request.url.path,
                         method=request.method
                     )
-                    
-                    # Record metric
-                    QUOTA_EXCEEDED.labels(
-                        user_id=user_id or "unknown",
-                        quota_type=plan or "unknown"
-                    ).inc()
-                    
-                    raise HTTPException(
-                        status_code=429,
-                        detail={
-                            "error": "quota_exceeded",
-                            "message": "Quota exhausted – upgrade your plan or wait for the quota to reset"
-                        }
-                    )
+                    # Continue with the request even if quota check fails
+                    pass
             
             # For other endpoints, you can add additional quota checks here
             # For example, for API endpoints with API keys
