@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any
+from email.utils import parseaddr
 
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -53,18 +54,17 @@ class QuotaMiddleware(BaseHTTPMiddleware):
                 form = await request.form()
                 from_field = form.get("from", "")
                 try:
-                    # Handle case where from field is empty or malformed
-                    if not from_field or "@" not in from_field:
+                    # Parse the email using email.utils.parseaddr for robust handling
+                    _, sender_email = parseaddr(from_field)
+                    if not sender_email or "@" not in sender_email:
                         logger.warning("Invalid or missing 'from' field in request", from_field=from_field)
-                        # Use a default user ID for rate limiting purposes
-                        user_id = "unknown@example.com"
-                    else:
-                        # Extract email from formats like "Name <email@example.com>" or just "email@example.com"
-                        sender_email = from_field.split()[-1].strip("<>")
-                        user_id = sender_email
+                        raise HTTPException(status_code=422, detail="Malformed sender email address")
+                    user_id = sender_email.lower()
                 except Exception as e:
-                    logger.warning("Error parsing 'from' field", error=str(e), from_field=from_field)
-                    user_id = "unknown@example.com"  # Fallback user ID
+                    if not isinstance(e, HTTPException):
+                        logger.warning("Error parsing 'from' field", error=str(e), from_field=from_field)
+                        raise HTTPException(status_code=422, detail="Invalid sender format") from e
+                    raise  # Re-raise HTTPException
                 
                 try:
                     # Get user's plan (in a real app, this would come from a user database)
