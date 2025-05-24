@@ -87,26 +87,106 @@ async def inbound_email(request: Request):
                                  str(v)[:100] + '...' if isinstance(v, (str, bytes)) else v)
                 
                 # Process form data
-                wanted = {"from", "to", "subject", "text", "html"}
                 payload = {}
-                for k, v in form.multi_items():
-                    kl = k.lower()
-                    if kl not in wanted:
-                        continue
-                    if isinstance(v, UploadFile):
-                        # Handle file uploads if needed
-                        continue
-                    if isinstance(v, bytes):
-                        v = v.decode(errors="replace")
-                    elif not isinstance(v, str):
-                        v = str(v)
-                    payload[kl] = v
+                
+                # Log all form parts for debugging
+                logger.warning("All form parts:")
+                form_items = list(form.multi_items())
+                for k, v in form_items:
+                    value_preview = str(v)[:100] + '...' if len(str(v)) > 100 else str(v)
+                    logger.warning(f"  - {k}: {value_preview} ({type(v).__name__})")
+                
+                # Handle raw email upload if present
+                if 'email' in form and isinstance(form['email'], UploadFile):
+                    try:
+                        from email import message_from_bytes
+                        from email.policy import default
+                        
+                        # Read the raw email content
+                        email_content = await form['email'].read()
+                        msg = message_from_bytes(email_content, policy=default)
+                        
+                        # Extract headers
+                        payload['from'] = msg.get('from', '')
+                        payload['to'] = msg.get('to', '')
+                        payload['subject'] = msg.get('subject', '')
+                        
+                        # Extract text/plain or text/html content
+                        if msg.is_multipart():
+                            for part in msg.walk():
+                                content_type = part.get_content_type()
+                                if content_type == 'text/plain' and 'text' not in payload:
+                                    payload['text'] = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                                elif content_type == 'text/html' and 'html' not in payload:
+                                    payload['html'] = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                        else:
+                            # Not multipart, get the payload directly
+                            payload['text'] = msg.get_payload(decode=True).decode('utf-8', errors='replace')
+                        
+                        logger.warning(f"Parsed email: from={payload.get('from')}, subject={payload.get('subject')}")
+                        
+                    except Exception as e:
+                        logger.error(f"Error parsing email: {str(e)}", exc_info=True)
+                        raise HTTPException(status_code=422, detail=f"Error parsing email: {str(e)}")
+                
+                # If we didn't process a raw email, try to extract fields from form data
+                if not payload:
+                    field_mapping = {
+                        'from': ['from', 'sender', 'envelope[from]'],
+                        'to': ['to', 'recipient', 'envelope[to]'],
+                        'subject': ['subject'],
+                        'text': ['text', 'plain', 'body-plain', 'body[text]'],
+                        'html': ['html', 'body-html', 'body[html]']
+                    }
+                
+                # Only process field mapping if we didn't handle a raw email upload
+                if not payload:
+                    field_mapping = {
+                        'from': ['from', 'sender', 'envelope[from]'],
+                        'to': ['to', 'recipient', 'envelope[to]'],
+                        'subject': ['subject'],
+                        'text': ['text', 'plain', 'body-plain', 'body[text]'],
+                        'html': ['html', 'body-html', 'body[html]']
+                    }
+                    
+                    # Process each field we're interested in
+                    for target_field, possible_fields in field_mapping.items():
+                        if target_field in payload:  # Skip if already set
+                            continue
+                            
+                        for field in possible_fields:
+                            if field in form:
+                                value = form[field]
+                                if isinstance(value, UploadFile):
+                                    # Read file content if needed
+                                    value = (await value.read()).decode('utf-8', errors='replace')
+                                elif isinstance(value, bytes):
+                                    value = value.decode('utf-8', errors='replace')
+                                elif not isinstance(value, str):
+                                    value = str(value)
+                                    
+                                payload[target_field] = value
+                                break  # Stop after first match
+                
+                # Special handling for email body if not found in standard fields
+                if 'text' not in payload and 'html' in payload:
+                    # If we only have HTML, use that as text
+                    import re
+                    payload['text'] = re.sub(r'<[^>]*>', ' ', payload['html']).strip()
+                elif 'text' not in payload and 'body' in form:
+                    # Fallback to raw body if available
+                    payload['text'] = form['body']
                 
                 if not payload:
-                    logger.warning("No recognized email fields found in form data")
+                    available_fields = list(form.keys())
+                    logger.warning(f"No recognized email fields found in form data. Available fields: {available_fields}")
                     raise HTTPException(
                         status_code=422,
-                        detail="No recognised e-mail fields in form-data"
+                        detail={
+                            "error": "no_recognized_email_fields",
+                            "available_fields": available_fields,
+                            "message": "No recognized email fields in form data. Please check the field names and try again."
+                        }
                     )
                     
             except Exception as form_error:
