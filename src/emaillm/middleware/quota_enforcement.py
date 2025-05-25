@@ -51,6 +51,10 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         try:
             # For inbound email webhook
             if request.url.path == "/webhook/inbound":
+                # Cache the raw body so downstream handlers can safely read it
+                body_bytes = await request.body()
+                request.state.cached_body = body_bytes
+                # Parse the form data from the cached body
                 form = await request.form()
                 from_field = form.get("from", "")
                 # Parse email using the same method as in inbound_email.py
