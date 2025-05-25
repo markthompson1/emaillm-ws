@@ -26,7 +26,8 @@ def send_email(*, to_addr: str, subject: str, body_text: str) -> None:
     }
     conn = http.client.HTTPSConnection("api.sendgrid.com", 443, timeout=10)
     headers = {
-        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+        # SENDGRID_KEY is defined above from SENDGRID_API_KEY or SENDGRID_SIGNING_KEY
+        "Authorization": f"Bearer {SENDGRID_KEY}",
         "Content-Type": "application/json",
     }
     conn.request("POST", "/v3/mail/send", body=json.dumps(payload), headers=headers)

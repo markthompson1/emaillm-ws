@@ -15,7 +15,8 @@ except ImportError:               # local dev without Firestore wheel
     firestore = None
 import os
 
-SENDGRID_API_KEY = os.getenv("SENDGRID_SIGNING_KEY")
+# Use the actual API key for authentication
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 DLQ_COLLECTION = "emails_dlq"
 

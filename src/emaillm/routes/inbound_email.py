@@ -57,9 +57,11 @@ async def inbound_email(request: Request):
     content_type = headers.get("content-type", "")
     
     # Only read body for signature verification if needed
-    body = b''
+    body = getattr(request.state, "cached_body", None) or b""
     if SENDGRID_SIGNING_KEY:
-        body = await request.body()
+        if not body:
+            body = await request.body()
+            request.state.cached_body = body
         logger.warning(">> Raw request body (first 500 bytes): %s", body[:500])
         if not verify_sendgrid_signature(request, body):
             raise HTTPException(status_code=401, detail="Invalid signature")
